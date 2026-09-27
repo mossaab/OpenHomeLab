@@ -636,6 +636,8 @@ export const ar: Dict = {
   'scanner.unknown': 'غير معروف',
   'scanner.openInDash': 'فتح {name} في لوحة التحكم',
   'scanner.addTitle': 'إضافة هذا المضيف إلى أجهزتك',
+  'scanner.webLink': 'فتح الواجهة الويب في علامة تبويب جديدة',
+  'scanner.terminalBtn': 'فتح الطرفية لهذا المضيف',
   'scanner.scanning': 'جارٍ فحص {start} – {end}…',
   'scanner.onlineChip': '{n} متصل',
   'scanner.scannedChip': 'تم فحص {found}/{total}',

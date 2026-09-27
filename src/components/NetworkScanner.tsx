@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { apiCall, ApiError } from '../api';
 import type { Profile, ScanResult, ScannedHost } from '../types';
-import { Radar, Play, Search, Loader2, ArrowUpRight, Plus, X } from 'lucide-react';
+import { Radar, Play, Search, Loader2, ArrowUpRight, Plus, X, Globe, Terminal as TerminalIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import Modal from './Modal';
 import { useToast } from './Toast';
@@ -54,6 +54,18 @@ const KNOWN_TAG_PORTS = new Set(PORT_TAGS.flatMap((t) => t.ports));
 function hostMatchesTag(host: ScannedHost, tag: PortTag): boolean {
   if (tag.id === 'other') return host.ports.some((p) => !KNOWN_TAG_PORTS.has(p.port));
   return host.ports.some((p) => tag.ports.includes(p.port));
+}
+
+function webUrlFor(host: ScannedHost): string | null {
+  if (!host.online) return null;
+  const ports = new Set(host.ports.map((p) => p.port));
+  if (ports.has(443)) return `https://${host.ip}/`;
+  if (ports.has(80)) return `http://${host.ip}/`;
+  return null;
+}
+
+function hasSshPort(host: ScannedHost): boolean {
+  return host.online && host.ports.some((p) => p.port === 22);
 }
 
 function StatusDot({ online }: { online: boolean }) {
@@ -115,7 +127,41 @@ function AddButton({ host, onAdd }: { host: ScannedHost; onAdd: (host: ScannedHo
   );
 }
 
-export default function NetworkScanner() {
+interface NetworkScannerProps {
+  onOpenTerminal: (input: { target: 'device' | 'ip'; deviceId?: number; ip?: string; deviceName?: string }) => void;
+}
+
+function WebLinkIp({ ip, url }: { ip: string; url: string }) {
+  const { t } = useI18n();
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={t('scanner.webLink')}
+      className="group inline-flex items-center gap-1.5 font-mono text-xs text-slate-800 dark:text-slate-200 hover:underline"
+    >
+      {ip}
+      <Globe size={12} className="text-indigo-500/70 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+    </a>
+  );
+}
+
+function SshTerminalButton({ host, onOpen }: { host: ScannedHost; onOpen: (host: ScannedHost) => void }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(host)}
+      title={t('scanner.terminalBtn')}
+      className="inline-flex items-center bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/15 hover:bg-slate-200/70 dark:hover:bg-white/15 p-1.5 rounded transition-colors text-slate-600 dark:text-slate-300"
+    >
+      <TerminalIcon size={12} />
+    </button>
+  );
+}
+
+export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) {
   const [startIp, setStartIp] = useState('');
   const [endIp, setEndIp] = useState('');
   const [customPorts, setCustomPorts] = useState('');
@@ -252,6 +298,14 @@ export default function NetworkScanner() {
 
   const openDevice = (id: number) => {
     window.location.hash = `#/dashboard/device/${id}`;
+  };
+
+  const openHostTerminal = (host: ScannedHost) => {
+    if (host.managed_device_id) {
+      onOpenTerminal({ target: 'device', deviceId: host.managed_device_id, deviceName: host.managed_device_name ?? undefined });
+    } else {
+      onOpenTerminal({ target: 'ip', ip: host.ip, deviceName: host.ip });
+    }
   };
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -545,7 +599,9 @@ export default function NetworkScanner() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-white/10">
-                {visibleHosts.map((host, i) => (
+                {visibleHosts.map((host, i) => {
+                  const webUrl = webUrlFor(host);
+                  return (
                   <motion.tr
                     key={host.ip}
                     initial={{ opacity: 0 }}
@@ -556,11 +612,15 @@ export default function NetworkScanner() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <StatusDot online={host.online} />
-                        <span
-                          className={`font-mono text-xs ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
-                        >
-                          {host.ip}
-                        </span>
+                        {webUrl ? (
+                          <WebLinkIp ip={host.ip} url={webUrl} />
+                        ) : (
+                          <span
+                            className={`font-mono text-xs ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
+                          >
+                            {host.ip}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
@@ -575,23 +635,29 @@ export default function NetworkScanner() {
                     <td className="px-4 py-3">{host.online ? <PortBadges host={host} /> : '-'}</td>
                     <td className="px-4 py-3 text-end">
                       {host.online ? (
-                        host.managed_device_id ? (
-                          <ManagedBadge host={host} onOpen={openDevice} />
-                        ) : (
-                          <AddButton host={host} onAdd={openAdd} />
-                        )
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          {host.managed_device_id ? (
+                            <ManagedBadge host={host} onOpen={openDevice} />
+                          ) : (
+                            <AddButton host={host} onAdd={openAdd} />
+                          )}
+                          {hasSshPort(host) && <SshTerminalButton host={host} onOpen={openHostTerminal} />}
+                        </div>
                       ) : (
                         '-'
                       )}
                     </td>
                   </motion.tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <div className="md:hidden divide-y divide-slate-200 dark:divide-white/10">
-            {visibleHosts.map((host, i) => (
+            {visibleHosts.map((host, i) => {
+              const webUrl = webUrlFor(host);
+              return (
               <motion.div
                 key={host.ip}
                 initial={{ opacity: 0, y: 8 }}
@@ -601,11 +667,17 @@ export default function NetworkScanner() {
               >
                 <div className="flex items-center gap-3">
                   <StatusDot online={host.online} />
-                  <span
-                    className={`font-mono text-sm ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
-                  >
-                    {host.ip}
-                  </span>
+                  {webUrl ? (
+                    <span className="font-mono text-sm">
+                      <WebLinkIp ip={host.ip} url={webUrl} />
+                    </span>
+                  ) : (
+                    <span
+                      className={`font-mono text-sm ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
+                    >
+                      {host.ip}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-3 pt-1 divide-y divide-slate-200/70 dark:divide-white/5">
                   <div className="flex items-center justify-between gap-3 py-2">
@@ -628,16 +700,18 @@ export default function NetworkScanner() {
                   )}
                 </div>
                 {host.online && (
-                  <div className="mt-2 flex justify-end">
+                  <div className="mt-2 flex items-center justify-end gap-1.5">
                     {host.managed_device_id ? (
                       <ManagedBadge host={host} onOpen={openDevice} />
                     ) : (
                       <AddButton host={host} onAdd={openAdd} />
                     )}
+                    {hasSshPort(host) && <SshTerminalButton host={host} onOpen={openHostTerminal} />}
                   </div>
                 )}
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}

@@ -31,15 +31,17 @@ function routeToHash(tab: Tab, deviceId: number | null): string {
 
 interface TerminalSession {
   key: string;
-  target: 'host' | 'device';
+  target: 'host' | 'device' | 'ip';
   deviceId?: number;
+  ip?: string;
   deviceName?: string;
   profileId?: number | null;
   minimized: boolean;
   maximized: boolean;
 }
 
-const terminalKey = (target: 'host' | 'device', deviceId?: number) => (target === 'host' ? 'host' : `device-${deviceId}`);
+const terminalKey = (target: 'host' | 'device' | 'ip', id?: number | string) =>
+  target === 'host' ? 'host' : `${target}-${id}`;
 
 const ICON_BTN = 'w-9 h-9 rounded-lg flex items-center justify-center border transition-colors';
 const ICON_IDLE = `${ICON_BTN} glass border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-white/10`;
@@ -101,8 +103,14 @@ export default function App() {
       .catch((err) => console.error(err));
   }, [isAuthenticated, settingsTick]);
 
-  const openTerminal = (input: { target: 'host' | 'device'; deviceId?: number; deviceName?: string; profileId?: number | null }) => {
-    const key = terminalKey(input.target, input.deviceId);
+  const openTerminal = (input: {
+    target: 'host' | 'device' | 'ip';
+    deviceId?: number;
+    ip?: string;
+    deviceName?: string;
+    profileId?: number | null;
+  }) => {
+    const key = terminalKey(input.target, input.deviceId ?? input.ip);
     setTerminalSessions((prev) => {
       const existing = prev.find((s) => s.key === key);
       if (existing) return [...prev.filter((s) => s.key !== key), { ...existing, minimized: false }];
@@ -354,7 +362,7 @@ export default function App() {
               onAppSettingsChanged={() => setSettingsTick((t) => t + 1)}
             />
           )}
-          {currentTab === 'scanner' && <NetworkScanner />}
+          {currentTab === 'scanner' && <NetworkScanner onOpenTerminal={openTerminal} />}
         </div>
       </main>
 
@@ -396,6 +404,7 @@ export default function App() {
           key={s.key}
           target={s.target}
           deviceId={s.deviceId}
+          ip={s.ip}
           deviceName={s.deviceName}
           deviceProfileId={s.profileId ?? null}
           minimized={s.minimized}

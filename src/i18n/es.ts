@@ -648,6 +648,8 @@ export const es: Dict = {
   'scanner.unknown': 'Desconocido',
   'scanner.openInDash': 'Abrir {name} en el panel',
   'scanner.addTitle': 'Añadir este host a tus dispositivos',
+  'scanner.webLink': 'Abrir la interfaz web en una pestaña nueva',
+  'scanner.terminalBtn': 'Abrir el terminal de este host',
   'scanner.scanning': 'Escaneando {start} – {end}…',
   'scanner.onlineChip': '{n} en línea',
   'scanner.scannedChip': '{found}/{total} escaneados',

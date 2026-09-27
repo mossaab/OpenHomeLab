@@ -658,6 +658,8 @@ export const fr: Dict = {
   'scanner.unknown': 'Inconnu',
   'scanner.openInDash': 'Ouvrir {name} dans le tableau de bord',
   'scanner.addTitle': 'Ajouter cet hôte à vos appareils',
+  'scanner.webLink': "Ouvrir l'interface web dans un nouvel onglet",
+  'scanner.terminalBtn': 'Ouvrir le terminal de cet hôte',
   'scanner.scanning': 'Analyse de {start} – {end}…',
   'scanner.onlineChip': '{n} en ligne',
   'scanner.scannedChip': '{found}/{total} analysés',

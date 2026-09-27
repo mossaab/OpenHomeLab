@@ -631,6 +631,8 @@ export const en = {
   'scanner.unknown': 'Unknown',
   'scanner.openInDash': 'Open {name} in the dashboard',
   'scanner.addTitle': 'Add this host to your devices',
+  'scanner.webLink': 'Open web interface in a new tab',
+  'scanner.terminalBtn': 'Open terminal for this host',
   'scanner.scanning': 'Scanning {start} – {end}…',
   'scanner.onlineChip': '{n} online',
   'scanner.scannedChip': '{found}/{total} scanned',

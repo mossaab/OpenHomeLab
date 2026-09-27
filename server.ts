@@ -4876,6 +4876,23 @@ export function attachTerminalWs(server: http.Server, ctx: AppContext) {
             profile = await loadProfile(requestedProfileId);
             if (!profile) return closeWithError(ws, 4004, 'SSH profile not found');
           }
+        } else if (target === 'ip') {
+          const rawIp = (query.get('ip') ?? '').trim();
+          let parsed: ipaddr.IPv4 | null = null;
+          try {
+            const p = ipaddr.parse(rawIp);
+            if (p.kind() === 'ipv4') parsed = p as ipaddr.IPv4;
+          } catch {
+            // not a valid address
+          }
+          if (!parsed) return closeWithError(ws, 4002, 'A valid IPv4 address is required');
+          const requestedProfileId = Number(query.get('profileId'));
+          if (!Number.isInteger(requestedProfileId) || requestedProfileId <= 0) {
+            return closeWithError(ws, 4003, 'No SSH profile selected — select one first');
+          }
+          profile = await loadProfile(requestedProfileId);
+          if (!profile) return closeWithError(ws, 4004, 'SSH profile not found');
+          host = parsed.toString();
         } else {
           return closeWithError(ws, 4002, 'Unknown terminal target');
         }

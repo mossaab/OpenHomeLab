@@ -98,6 +98,35 @@ describe('Terminal WebSocket', () => {
     expect(res.code).toBe(4002);
   });
 
+  it('rejects an invalid ip for the ip target with 4002', async () => {
+    const res = await openWs({ token, target: 'ip', ip: 'not-an-ip', profileId: String(profileId) });
+    expect(res.code).toBe(4002);
+    expect(res.reason).toMatch(/ipv4/i);
+  });
+
+  it('rejects an IPv6 address for the ip target with 4002', async () => {
+    const res = await openWs({ token, target: 'ip', ip: '::1', profileId: String(profileId) });
+    expect(res.code).toBe(4002);
+    expect(res.reason).toMatch(/ipv4/i);
+  });
+
+  it('asks for a profile when opening the ip terminal without one', async () => {
+    const res = await openWs({ token, target: 'ip', ip: '192.0.2.50' });
+    expect(res.code).toBe(4003);
+    expect(res.reason).toMatch(/profile/i);
+  });
+
+  it('rejects an unknown profileId for the ip target', async () => {
+    const res = await openWs({ token, target: 'ip', ip: '192.0.2.50', profileId: '99999' });
+    expect(res.code).toBe(4004);
+    expect(res.reason).toMatch(/profile/i);
+  });
+
+  it('uses the selected profile for the ip target and reports SSH failures', async () => {
+    const res = await openWs({ token, target: 'ip', ip: '192.0.2.50', profileId: String(profileId) });
+    expect(res.code).toBe(4501);
+  }, 30_000);
+
   it('uses the selected profile for a device without one and reports SSH failures', async () => {
     const res = await openWs({ token, target: 'device', deviceId: String(deviceId), profileId: String(profileId) });
     expect(res.code).toBe(4501);

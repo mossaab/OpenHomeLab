@@ -15,8 +15,9 @@ const CTRL_BTN =
 
 interface TerminalDialogProps {
   key?: string | number;
-  target: 'host' | 'device';
+  target: 'host' | 'device' | 'ip';
   deviceId?: number;
+  ip?: string;
   deviceName?: string;
   deviceProfileId?: number | null;
   minimized?: boolean;
@@ -33,6 +34,7 @@ interface TerminalDialogProps {
 export default function TerminalDialog({
   target,
   deviceId,
+  ip,
   deviceName,
   deviceProfileId = null,
   minimized = false,
@@ -46,7 +48,7 @@ export default function TerminalDialog({
   onStatusChange,
 }: TerminalDialogProps) {
   const { t } = useI18n();
-  const needProfile = target === 'host' || deviceProfileId === null;
+  const needProfile = target === 'host' || target === 'ip' || deviceProfileId === null;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [status, setStatus] = useState<TermStatus>(needProfile ? 'selecting' : 'connecting');
@@ -116,6 +118,7 @@ export default function TerminalDialog({
       setErrorMsg('');
       const params = new URLSearchParams({ token: localStorage.getItem('auth_token') ?? '', target });
       if (target === 'device' && deviceId !== undefined) params.set('deviceId', String(deviceId));
+      if (target === 'ip') params.set('ip', ip ?? '');
       if (profileId !== null) params.set('profileId', String(profileId));
       const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const wsUrl = `${proto}://${window.location.host}/api/terminal/ws?${params.toString()}`;
@@ -223,7 +226,7 @@ export default function TerminalDialog({
         }
       };
     },
-    [target, deviceId, t]
+    [target, deviceId, ip, t]
   );
 
   useEffect(() => {
@@ -233,7 +236,9 @@ export default function TerminalDialog({
   const title =
     target === 'host'
       ? t('term.titleHost')
-      : t('term.titleDevice', { name: deviceName ?? t('term.deviceFallback', { id: String(deviceId) }) });
+      : t('term.titleDevice', {
+          name: (target === 'ip' ? ip : deviceName) ?? t('term.deviceFallback', { id: String(deviceId) }),
+        });
 
   return (
     <Modal
