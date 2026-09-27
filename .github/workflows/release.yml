@@ -37,6 +37,9 @@ jobs:
       - run: npm run lint
       - run: npm test
 
+      - name: Install zip
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zip
+
       - name: Build source archives
         run: |
           TAG="${GITHUB_REF_NAME#v}"
