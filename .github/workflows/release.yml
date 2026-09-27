@@ -59,6 +59,9 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           build-args: APP_VERSION=${{ github.ref_name }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           push: true
           tags: |
             ${{ env.IMAGE_REF }}:${{ github.ref_name }}
