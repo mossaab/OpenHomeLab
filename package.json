@@ -1,6 +1,6 @@
 {
   "name": "openhomelab",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Self-hosted network device controller: ping monitoring, Wake-on-LAN and remote reboot/shutdown over SSH",
   "type": "module",
   "engines": {
