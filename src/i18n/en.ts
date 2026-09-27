@@ -353,6 +353,9 @@ export const en = {
   'devsetup.copyFailed': 'Could not copy to clipboard',
   'devsetup.createLinkFailed': 'Failed to create installation link',
   'devsetup.linkExpired': 'Installation link expired — generate a new one below.',
+  'devsetup.lanScanBtn': 'Find a device on my network…',
+  'devsetup.lanScanHint':
+    'Pick a range and scan to find the target host, then open its terminal and paste the install command above.',
   'groups.title': 'Manage groups',
   'groups.noneYet': 'No groups yet. Create one below and drag devices into it from the dashboard.',
   'groups.dragReorder': 'Drag to reorder',

@@ -13,7 +13,11 @@ import {
   RefreshCw,
   Server,
   LayoutDashboard,
-  Eye
+  Eye,
+  Radar,
+  Play,
+  ChevronDown,
+  Terminal as TerminalIcon,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import ConfirmDialog from './ConfirmDialog';
@@ -23,6 +27,7 @@ import { deviceToPutBody } from '../devicePutBody';
 import { useToast } from './Toast';
 import { deviceTypeSpec } from '../deviceTypes';
 import { useI18n } from '../i18n';
+import { useScan } from '../hooks/useScan';
 
 function StatusDot({ online }: { online: boolean }) {
   const { t } = useI18n();
@@ -51,6 +56,186 @@ function ProfileBadge({ name }: { name: string }) {
   );
 }
 
+function LanScanPanel({
+  onOpenIpTerminal,
+  onScanningChange,
+}: {
+  onOpenIpTerminal: (ip: string, name?: string) => void;
+  onScanningChange: (scanning: boolean) => void;
+}) {
+  const scan = useScan();
+  const {
+    startIp,
+    setStartIp,
+    endIp,
+    setEndIp,
+    scanning,
+    cancelling,
+    result,
+    localError,
+    pollNow,
+    localRange,
+    presets,
+    progressPct,
+    cancelScan,
+    startScan,
+  } = scan;
+  const { t } = useI18n();
+
+  useEffect(() => {
+    onScanningChange(scanning);
+  }, [scanning, onScanningChange]);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        {t('devsetup.lanScanHint')}
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          type="text"
+          value={startIp}
+          onChange={(e) => setStartIp(e.target.value)}
+          placeholder="192.168.1.0"
+          disabled={scanning}
+          aria-label={t('scanner.startIp')}
+          className="w-full bg-white/70 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+        />
+        <input
+          type="text"
+          value={endIp}
+          onChange={(e) => setEndIp(e.target.value)}
+          placeholder="192.168.1.254"
+          disabled={scanning}
+          aria-label={t('scanner.endIp')}
+          className="w-full bg-white/70 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {presets.map((p) => (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => {
+              setStartIp(p.start);
+              setEndIp(p.end);
+            }}
+            disabled={scanning}
+            className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200/70 dark:hover:bg-white/10 px-2.5 py-1 rounded-lg text-[11px] font-mono text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
+          >
+            {p.label}
+          </button>
+        ))}
+        {localRange && (
+          <button
+            type="button"
+            onClick={() => {
+              setStartIp(localRange.startIp);
+              setEndIp(localRange.endIp);
+            }}
+            disabled={scanning}
+            className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/25 hover:bg-indigo-100/70 dark:hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg text-[11px] font-mono text-indigo-700 dark:text-indigo-300 transition-colors disabled:opacity-50"
+          >
+            {t('scanner.myLan', { start: localRange.startIp, end: localRange.endIp })}
+          </button>
+        )}
+      </div>
+      {localError && <p className="text-xs text-rose-600 dark:text-rose-400">{localError}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => void startScan()}
+          disabled={scanning}
+          className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-medium px-4 py-2 rounded-lg transition-colors text-xs"
+        >
+          {scanning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          {t('scanner.scanBtn')}
+        </button>
+        {scanning && (
+          <button
+            type="button"
+            onClick={cancelScan}
+            disabled={cancelling}
+            title={t('scanner.cancelTitle')}
+            className="flex items-center justify-center gap-2 bg-slate-200/80 dark:bg-white/10 hover:bg-slate-300/70 dark:hover:bg-white/15 disabled:opacity-60 text-slate-600 dark:text-slate-300 font-medium px-4 py-2 rounded-lg transition-colors text-xs"
+          >
+            <X size={14} />
+            {t('common.cancel')}
+          </button>
+        )}
+      </div>
+      {scanning && result && (
+        <div className="rounded-lg border border-indigo-300/60 dark:border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-500/10 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 text-[11px] text-slate-600 dark:text-slate-300">
+            <span className="flex items-center gap-2 min-w-0">
+              <Loader2 size={13} className="animate-spin text-indigo-500 shrink-0" />
+              <span className="truncate">
+                {t('scanner.scanning', { start: startIp.trim(), end: endIp.trim() })}
+              </span>
+            </span>
+            <span className="font-mono shrink-0">
+              {result.scannedCount}/{result.total}
+              {pollNow !== null && result.startedAt
+                ? ` · ${Math.max(0, Math.round((pollNow - result.startedAt) / 1000))}s`
+                : ''}
+            </span>
+          </div>
+          <div className="mt-2 h-1 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+            <motion.div
+              initial={false}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.4 }}
+              className="h-full bg-indigo-500 rounded-full"
+            />
+          </div>
+        </div>
+      )}
+      {result &&
+        !scanning &&
+        (result.status === 'failed' ? (
+          <p className="text-xs text-rose-600 dark:text-rose-400">
+            {result.errorCode === 'icmp_unavailable'
+              ? t('scanner.errIcmpUnavailable')
+              : result.error || t('scanner.stopped')}
+          </p>
+        ) : result.status === 'cancelled' ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.cancelled')}</p>
+        ) : result.hosts.length === 0 ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.emptyHint')}</p>
+        ) : (
+          <ul className="max-h-44 overflow-y-auto custom-scrollbar rounded-lg border border-slate-200 dark:border-white/10 divide-y divide-slate-200/70 dark:divide-white/5">
+            {result.hosts.map((h) => (
+              <li key={h.ip} className="flex items-center gap-2.5 px-3 py-2">
+                <span
+                  title={h.online ? t('common.online') : t('common.offline')}
+                  className={`h-2 w-2 rounded-full shrink-0 ${h.online ? 'status-online' : 'status-offline'}`}
+                />
+                <span className="font-mono text-xs text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  {h.ip}
+                </span>
+                <span className="flex-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                  {h.hostname ?? '-'}
+                </span>
+                <span className="hidden sm:inline font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  {h.mac ?? '-'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onOpenIpTerminal(h.ip, h.hostname ?? h.ip)}
+                  title={t('scanner.terminalBtn')}
+                  aria-label={t('scanner.terminalBtn')}
+                  className="shrink-0 p-1.5 rounded transition-colors text-slate-500 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10"
+                >
+                  <TerminalIcon size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
+  );
+}
+
 const pickWolInterface = (list: DeviceInterface[]): DeviceInterface | null => {
   const withIp = (i: DeviceInterface) => i.ips.length > 0;
   return list.find((i) => i.kind === 'eth' && withIp(i)) ?? list.find(withIp) ?? list[0] ?? null;
@@ -61,9 +246,10 @@ const SKELETON_COUNT = 5;
 interface DevicesSetupProps {
   onClose: () => void;
   onViewDevice: (id: number) => void;
+  onOpenIpTerminal: (ip: string, name?: string) => void;
 }
 
-export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProps) {
+export default function DevicesSetup({ onClose, onViewDevice, onOpenIpTerminal }: DevicesSetupProps) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -79,6 +265,8 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
 
   const [formData, setFormData] = useState<DeviceFormValues>(EMPTY_DEVICE_FORM);
   const [addMode, setAddMode] = useState<'agent' | 'manual'>('agent');
+  const [lanPanelOpen, setLanPanelOpen] = useState(false);
+  const [lanScanning, setLanScanning] = useState(false);
   const [claim, setClaim] = useState<{ claimId: number; token: string; expiresAt: number } | null>(null);
   const [creatingClaim, setCreatingClaim] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -93,7 +281,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
     setClaimError(null);
     try {
       const data = await apiCall<{ claim_id: number; token: string; expires_at: number }>('/devices/claim', {
-        method: 'POST'
+        method: 'POST',
       });
       setClaim({ claimId: data.claim_id, token: data.token, expiresAt: data.expires_at });
     } catch (e) {
@@ -106,7 +294,8 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
   const fillFromSnapshot = useCallback((snap: AgentSnapshot, samples: number[]) => {
     const list = snap.interfaces ?? [];
     const iface = pickWolInterface(list);
-    const avg = samples.length > 0 ? Math.round((samples.reduce((a, b) => a + b, 0) / samples.length) * 10) / 10 : null;
+    const avg =
+      samples.length > 0 ? Math.round((samples.reduce((a, b) => a + b, 0) / samples.length) * 10) / 10 : null;
     setFormData({
       name: snap.hostname || '',
       hostname: snap.hostname || '',
@@ -123,7 +312,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
       disable_power: false,
       disable_ping: false,
       disable_terminal: false,
-      disable_agent_update: false
+      disable_agent_update: false,
     });
     setWolIfaceName(iface?.name ?? null);
   }, []);
@@ -142,7 +331,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
       const [devs, profs, grps] = await Promise.all([
         apiCall<Device[]>('/devices'),
         apiCall<Profile[]>('/profiles'),
-        apiCall<Group[]>('/groups')
+        apiCall<Group[]>('/groups'),
       ]);
       setDevices(devs);
       setProfiles(profs);
@@ -173,9 +362,11 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
     if (!showModal || addMode !== 'agent' || !claim || agentSnapshot) return;
     const poll = setInterval(async () => {
       try {
-        const data = await apiCall<{ installed: boolean; power_samples: number[]; snapshot: AgentSnapshot | null }>(
-          `/devices/claims/${claim.claimId}/status`
-        );
+        const data = await apiCall<{
+          installed: boolean;
+          power_samples: number[];
+          snapshot: AgentSnapshot | null;
+        }>(`/devices/claims/${claim.claimId}/status`);
         if (data.installed && data.snapshot) {
           fillFromSnapshot(data.snapshot, data.power_samples ?? []);
           setAgentSnapshot(data.snapshot);
@@ -198,15 +389,17 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
           d.name.toLowerCase().includes(query) ||
           d.ip.toLowerCase().includes(query) ||
           (d.mac ?? '').toLowerCase().includes(query) ||
-          (d.hostname ?? '').toLowerCase().includes(query)
+          (d.hostname ?? '').toLowerCase().includes(query),
       ),
-    [devices, query]
+    [devices, query],
   );
   const activeCount = devices.filter((d) => d.active).length;
 
   const resetForm = () => {
     setFormData(EMPTY_DEVICE_FORM);
     setAddMode('agent');
+    setLanPanelOpen(false);
+    setLanScanning(false);
     setClaim(null);
     setCreatingClaim(false);
     setClaimError(null);
@@ -235,7 +428,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
       ...formData,
       profile_id: formData.profile_id ? parseInt(formData.profile_id) : null,
       group_id: formData.group_id ? parseInt(formData.group_id) : null,
-      base_power_w: formData.base_power_w === '' ? null : Number(formData.base_power_w)
+      base_power_w: formData.base_power_w === '' ? null : Number(formData.base_power_w),
     };
     if (addMode === 'agent') {
       if (agentSnapshot?.interfaces?.length) body.interfaces = agentSnapshot.interfaces;
@@ -245,7 +438,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
     try {
       await apiCall('/devices', {
         method: 'POST',
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
       if (addMode === 'agent' && claim) claimConsumedRef.current = true;
       addToast('success', t('devsetup.deviceAdded'));
@@ -261,7 +454,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
     try {
       await apiCall(`/devices/${dev.id}`, {
         method: 'PUT',
-        body: JSON.stringify(deviceToPutBody(dev, { active: dev.active ? 0 : 1 }))
+        body: JSON.stringify(deviceToPutBody(dev, { active: dev.active ? 0 : 1 })),
       });
       fetchData();
     } catch (e: any) {
@@ -274,13 +467,16 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
   const handleUpdateAgents = async () => {
     setUpdatingAgents(true);
     try {
-      const data = await apiCall<{ success: boolean; queued: number; up_to_date: number }>('/devices/agents/update', {
-        method: 'POST'
-      });
+      const data = await apiCall<{ success: boolean; queued: number; up_to_date: number }>(
+        '/devices/agents/update',
+        {
+          method: 'POST',
+        },
+      );
       if (data.queued > 0) {
         addToast(
           'success',
-          t('devsetup.updatesQueued', { n: data.queued, plural: data.queued === 1 ? '' : 's' })
+          t('devsetup.updatesQueued', { n: data.queued, plural: data.queued === 1 ? '' : 's' }),
         );
       } else if (data.up_to_date > 0) {
         addToast('success', t('devsetup.allUpToDate'));
@@ -396,7 +592,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
       ...prev,
       ip: iface.ips[0] || prev.ip,
       mac: iface.mac || prev.mac,
-      broadcast_address: iface.broadcast || prev.broadcast_address
+      broadcast_address: iface.broadcast || prev.broadcast_address,
     }));
   };
 
@@ -418,7 +614,7 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
             {t('devsetup.countLine', {
               total: devices.length,
               plural: devices.length === 1 ? '' : 's',
-              active: activeCount
+              active: activeCount,
             })}
           </p>
         </div>
@@ -508,7 +704,9 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
                         <div className="flex items-center gap-3 min-w-0">
                           <div
                             className={`shrink-0 ${
-                              dev.active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+                              dev.active
+                                ? 'text-indigo-600 dark:text-indigo-400'
+                                : 'text-slate-400 dark:text-slate-500'
                             }`}
                           >
                             <DevIcon size={18} />
@@ -518,13 +716,17 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
                               <StatusDot online={!!statusMap[dev.id]} />
                               <span
                                 className={`font-semibold truncate ${
-                                  dev.active ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'
+                                  dev.active
+                                    ? 'text-slate-800 dark:text-slate-200'
+                                    : 'text-slate-500 dark:text-slate-400'
                                 }`}
                               >
                                 {dev.name}
                               </span>
                             </div>
-                            <div className="mt-0.5 text-xs font-mono text-slate-500 dark:text-slate-400">{dev.ip}</div>
+                            <div className="mt-0.5 text-xs font-mono text-slate-500 dark:text-slate-400">
+                              {dev.ip}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -538,14 +740,18 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
                             {dev.broadcast_address}
                           </span>
                         ) : (
-                          <span className="italic text-slate-500 dark:text-slate-600">{t('common.auto')}</span>
+                          <span className="italic text-slate-500 dark:text-slate-600">
+                            {t('common.auto')}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {profile ? (
                           <ProfileBadge name={profile.name} />
                         ) : (
-                          <span className="text-xs text-slate-500 dark:text-slate-600 italic">{t('common.none')}</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-600 italic">
+                            {t('common.none')}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -576,7 +782,9 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
                   <div className="flex items-center gap-3">
                     <div
                       className={`shrink-0 ${
-                        dev.active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+                        dev.active
+                          ? 'text-indigo-600 dark:text-indigo-400'
+                          : 'text-slate-400 dark:text-slate-500'
                       }`}
                     >
                       <DevIcon size={18} />
@@ -586,13 +794,17 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
                         <StatusDot online={!!statusMap[dev.id]} />
                         <span
                           className={`font-semibold truncate ${
-                            dev.active ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'
+                            dev.active
+                              ? 'text-slate-800 dark:text-slate-200'
+                              : 'text-slate-500 dark:text-slate-400'
                           }`}
                         >
                           {dev.name}
                         </span>
                       </div>
-                      <div className="mt-0.5 text-xs font-mono text-slate-500 dark:text-slate-400">{dev.ip}</div>
+                      <div className="mt-0.5 text-xs font-mono text-slate-500 dark:text-slate-400">
+                        {dev.ip}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-3 pt-1 divide-y divide-slate-200/70 dark:divide-white/5">
@@ -650,140 +862,168 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
           onBackdropClick={closeModal}
           className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[85vh] overflow-y-auto custom-scrollbar rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl border-b sm:border border-slate-200 dark:border-white/10"
         >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-medium text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <Plus size={18} className="text-indigo-600 dark:text-indigo-400" /> {t('devsetup.modalTitle')}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-200/70 dark:hover:bg-white/10"
-              >
-                <X size={20} />
-              </button>
-            </div>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-medium text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <Plus size={18} className="text-indigo-600 dark:text-indigo-400" /> {t('devsetup.modalTitle')}
+            </h3>
+            <button
+              onClick={closeModal}
+              className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-200/70 dark:hover:bg-white/10"
+            >
+              <X size={20} />
+            </button>
+          </div>
 
-            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-white/5 mb-5">
-              {(['agent', 'manual'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setAddMode(m)}
-                  className={`px-3 py-2 rounded-lg text-start transition-colors ${
+          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-white/5 mb-5">
+            {(['agent', 'manual'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setAddMode(m)}
+                className={`px-3 py-2 rounded-lg text-start transition-colors ${
+                  addMode === m
+                    ? 'bg-white dark:bg-slate-800 shadow-sm'
+                    : 'hover:bg-slate-200/40 dark:hover:bg-white/5'
+                }`}
+              >
+                <span
+                  className={`block text-xs font-semibold ${
                     addMode === m
-                      ? 'bg-white dark:bg-slate-800 shadow-sm'
-                      : 'hover:bg-slate-200/40 dark:hover:bg-white/5'
+                      ? 'text-indigo-600 dark:text-indigo-300'
+                      : 'text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  <span
-                    className={`block text-xs font-semibold ${
-                      addMode === m ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    {m === 'agent' ? t('devsetup.modeAgent') : t('devsetup.modeManual')}
-                  </span>
-                  <span className="block text-[10px] leading-tight text-slate-500 dark:text-slate-400 mt-0.5">
-                    {m === 'agent' ? t('devsetup.modeAgentDesc') : t('devsetup.modeManualDesc')}
-                  </span>
-                </button>
-              ))}
-            </div>
+                  {m === 'agent' ? t('devsetup.modeAgent') : t('devsetup.modeManual')}
+                </span>
+                <span className="block text-[10px] leading-tight text-slate-500 dark:text-slate-400 mt-0.5">
+                  {m === 'agent' ? t('devsetup.modeAgentDesc') : t('devsetup.modeManualDesc')}
+                </span>
+              </button>
+            ))}
+          </div>
 
-            {addMode === 'agent' && !agentSnapshot && (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="min-w-[18px] h-[18px] rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
-                      1
-                    </span>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      {t('devsetup.step1Title')}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed ps-[26px]">
-                    {t('devsetup.step1Desc')}
-                  </p>
+          {addMode === 'agent' && !agentSnapshot && (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="min-w-[18px] h-[18px] rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    1
+                  </span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {t('devsetup.step1Title')}
+                  </span>
                 </div>
-                {creatingClaim && (
-                  <div className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-white/10 px-4 py-6">
-                    <Loader2 size={18} className="animate-spin text-indigo-500" />
-                    <span className="text-sm text-slate-500 dark:text-slate-400">{t('devsetup.generatingLink')}</span>
-                  </div>
-                )}
-                {claim && !creatingClaim && (
-                  <>
-                    <div className="flex gap-2">
-                      <code className="flex-1 min-w-0 overflow-x-auto whitespace-nowrap bg-slate-900 text-slate-100 rounded-lg px-3 py-2.5 text-[11px] font-mono">
-                        {installCommand}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(installCommand)}
-                        className="shrink-0 flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 rounded-lg text-xs transition-colors"
-                      >
-                        <Copy size={13} /> {t('common.copy')}
-                      </button>
-                    </div>
-                    <div className="rounded-lg border border-dashed border-indigo-300 dark:border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-500/10 px-4 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <span className="min-w-[18px] h-[18px] rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                          2
-                        </span>
-                        <Loader2 size={15} className="animate-spin text-indigo-500" />
-                        <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                          {t('devsetup.waitingConnect')}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono ps-[26px]">
-                        {t('devsetup.expiresIn', { n: Math.max(0, Math.ceil((claim.expiresAt - nowTs) / 60000)) })}
-                      </p>
-                    </div>
-                  </>
-                )}
-                {claimError && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-rose-300/60 dark:border-rose-500/40 bg-rose-50/70 dark:bg-rose-500/10 px-4 py-3">
-                    <span className="flex-1 text-xs text-rose-700 dark:text-rose-300">{claimError}</span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed ps-[26px]">
+                  {t('devsetup.step1Desc')}
+                </p>
+              </div>
+              {creatingClaim && (
+                <div className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-white/10 px-4 py-6">
+                  <Loader2 size={18} className="animate-spin text-indigo-500" />
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    {t('devsetup.generatingLink')}
+                  </span>
+                </div>
+              )}
+              {claim && !creatingClaim && (
+                <>
+                  <div className="flex gap-2">
+                    <code className="flex-1 min-w-0 overflow-x-auto whitespace-nowrap bg-slate-900 text-slate-100 rounded-lg px-3 py-2.5 text-[11px] font-mono">
+                      {installCommand}
+                    </code>
                     <button
                       type="button"
-                      onClick={() => createClaim()}
-                      className="shrink-0 text-xs font-medium text-rose-700 dark:text-rose-300 hover:underline"
+                      onClick={() => handleCopy(installCommand)}
+                      className="shrink-0 flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 rounded-lg text-xs transition-colors"
                     >
-                      {t('common.retry')}
+                      <Copy size={13} /> {t('common.copy')}
                     </button>
                   </div>
-                )}
+                  <div className="rounded-lg border border-dashed border-indigo-300 dark:border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-500/10 px-4 py-4">
+                    <div className="flex items-center gap-2.5">
+                      <span className="min-w-[18px] h-[18px] rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                        2
+                      </span>
+                      <Loader2 size={15} className="animate-spin text-indigo-500" />
+                      <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                        {t('devsetup.waitingConnect')}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono ps-[26px]">
+                      {t('devsetup.expiresIn', {
+                        n: Math.max(0, Math.ceil((claim.expiresAt - nowTs) / 60000)),
+                      })}
+                    </p>
+                  </div>
+                </>
+              )}
+              {claimError && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-rose-300/60 dark:border-rose-500/40 bg-rose-50/70 dark:bg-rose-500/10 px-4 py-3">
+                  <span className="flex-1 text-xs text-rose-700 dark:text-rose-300">{claimError}</span>
+                  <button
+                    type="button"
+                    onClick={() => createClaim()}
+                    className="shrink-0 text-xs font-medium text-rose-700 dark:text-rose-300 hover:underline"
+                  >
+                    {t('common.retry')}
+                  </button>
+                </div>
+              )}
+              <div className="rounded-lg border border-slate-200 dark:border-white/10">
                 <button
                   type="button"
-                  onClick={closeModal}
-                  className="w-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 font-medium px-4 py-2.5 rounded-lg transition-colors text-sm"
+                  onClick={() => setLanPanelOpen((v) => !v)}
+                  disabled={lanScanning}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
-                  {t('common.cancel')}
+                  <Radar size={14} className="text-indigo-500 shrink-0" />
+                  <span className="flex-1 text-start">{t('devsetup.lanScanBtn')}</span>
+                  <ChevronDown
+                    size={14}
+                    className={`shrink-0 transition-transform ${lanPanelOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
+                {lanPanelOpen && (
+                  <div className="px-4 pb-4 pt-3 border-t border-slate-200 dark:border-white/10">
+                    <LanScanPanel onOpenIpTerminal={onOpenIpTerminal} onScanningChange={setLanScanning} />
+                  </div>
+                )}
               </div>
-            )}
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 font-medium px-4 py-2.5 rounded-lg transition-colors text-sm"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          )}
 
-            {agentReady && (
-              <div className="flex items-center gap-2.5 rounded-lg border border-emerald-300/60 dark:border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2.5 mb-4">
-                <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="text-xs text-emerald-700 dark:text-emerald-300">
-                  {t('devsetup.agentDetected', { name: agentSnapshot?.hostname || t('devsetup.deviceFallback') })}
-                </span>
-              </div>
-            )}
+          {agentReady && (
+            <div className="flex items-center gap-2.5 rounded-lg border border-emerald-300/60 dark:border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2.5 mb-4">
+              <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                {t('devsetup.agentDetected', {
+                  name: agentSnapshot?.hostname || t('devsetup.deviceFallback'),
+                })}
+              </span>
+            </div>
+          )}
 
-            {(addMode === 'manual' || !!agentSnapshot) && (
-              <DeviceForm
-                values={formData}
-                onChange={setFormData}
-                profiles={profiles}
-                groups={groups}
-                interfaces={modalInterfaces}
-                selectedIfaceName={wolIfaceName}
-                onIfaceSelect={handleIfaceSelect}
-                submitLabel={t('devsetup.addDeviceBtn')}
-                onSubmit={(e) => void handleSubmit(e)}
-                onCancel={closeModal}
-              />
-            )}
+          {(addMode === 'manual' || !!agentSnapshot) && (
+            <DeviceForm
+              values={formData}
+              onChange={setFormData}
+              profiles={profiles}
+              groups={groups}
+              interfaces={modalInterfaces}
+              selectedIfaceName={wolIfaceName}
+              onIfaceSelect={handleIfaceSelect}
+              submitLabel={t('devsetup.addDeviceBtn')}
+              onSubmit={(e) => void handleSubmit(e)}
+              onCancel={closeModal}
+            />
+          )}
         </Modal>
       )}
 

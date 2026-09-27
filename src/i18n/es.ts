@@ -361,6 +361,9 @@ export const es: Dict = {
   'devsetup.copyFailed': 'No se pudo copiar al portapapeles',
   'devsetup.createLinkFailed': 'No se pudo crear el enlace de instalación',
   'devsetup.linkExpired': 'Enlace de instalación caducado — genera uno nuevo abajo.',
+  'devsetup.lanScanBtn': 'Buscar un equipo en mi red…',
+  'devsetup.lanScanHint':
+    'Elige un rango y escanea para encontrar el equipo destino, abre su terminal y pega el comando de instalación de arriba.',
   'groups.title': 'Gestionar grupos',
   'groups.noneYet': 'Todavía no hay grupos. Crea uno abajo y arrastra equipos desde el panel.',
   'groups.dragReorder': 'Arrastra para reordenar',

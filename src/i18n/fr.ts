@@ -367,6 +367,9 @@ export const fr: Dict = {
   'devsetup.copyFailed': 'Impossible de copier dans le presse-papiers',
   'devsetup.createLinkFailed': "Échec de la création du lien d'installation",
   'devsetup.linkExpired': "Lien d'installation expiré — générez-en un nouveau ci-dessous.",
+  'devsetup.lanScanBtn': 'Trouver un équipement sur mon réseau…',
+  'devsetup.lanScanHint':
+    'Choisissez une plage et lancez le scan pour trouver l’équipement cible, ouvrez son terminal puis collez la commande d’installation ci-dessus.',
   'groups.title': 'Gérer les groupes',
   'groups.noneYet':
     'Aucun groupe pour le moment. Créez-en un ci-dessous et glissez des équipements depuis le tableau de bord.',

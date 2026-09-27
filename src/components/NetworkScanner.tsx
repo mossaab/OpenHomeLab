@@ -1,29 +1,33 @@
 import React from 'react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { apiCall, ApiError } from '../api';
-import type { Profile, ScanResult, ScannedHost } from '../types';
-import { Radar, Play, Search, Loader2, ArrowUpRight, Plus, X, Globe, Terminal as TerminalIcon } from 'lucide-react';
+import type { Profile, ScannedHost } from '../types';
+import {
+  Radar,
+  Play,
+  Search,
+  Loader2,
+  ArrowUpRight,
+  Plus,
+  X,
+  Globe,
+  Terminal as TerminalIcon,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import Modal from './Modal';
 import { useToast } from './Toast';
 import { DEVICE_TYPES } from '../deviceTypes';
 import { useI18n } from '../i18n';
 import type { Dict } from '../i18n/index';
-
-const IPv4_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-
-function ipToNum(ip: string): number | null {
-  const m = IPv4_RE.exec(ip.trim());
-  if (!m) return null;
-  const parts = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
-  if (parts.some((p) => p > 255)) return null;
-  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
-}
+import { useScan } from '../hooks/useScan';
 
 function parseCustomPorts(raw: string): number[] | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  const nums = trimmed.split(/[\s,]+/).filter(Boolean).map(Number);
+  const nums = trimmed
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(Number);
   if (nums.length === 0 || nums.some((n) => !Number.isInteger(n) || n < 1 || n > 65535)) return null;
   return [...new Set(nums)];
 }
@@ -100,7 +104,8 @@ function PortBadges({ host }: { host: ScannedHost }) {
 
 function ManagedBadge({ host, onOpen }: { host: ScannedHost; onOpen: (id: number) => void }) {
   const { t } = useI18n();
-  if (!host.managed_device_id) return <span className="italic text-xs text-slate-500 dark:text-slate-600">{t('scanner.unknown')}</span>;
+  if (!host.managed_device_id)
+    return <span className="italic text-xs text-slate-500 dark:text-slate-600">{t('scanner.unknown')}</span>;
   return (
     <button
       onClick={() => onOpen(host.managed_device_id as number)}
@@ -128,7 +133,12 @@ function AddButton({ host, onAdd }: { host: ScannedHost; onAdd: (host: ScannedHo
 }
 
 interface NetworkScannerProps {
-  onOpenTerminal: (input: { target: 'device' | 'ip'; deviceId?: number; ip?: string; deviceName?: string }) => void;
+  onOpenTerminal: (input: {
+    target: 'device' | 'ip';
+    deviceId?: number;
+    ip?: string;
+    deviceName?: string;
+  }) => void;
 }
 
 function WebLinkIp({ ip, url }: { ip: string; url: string }) {
@@ -142,7 +152,10 @@ function WebLinkIp({ ip, url }: { ip: string; url: string }) {
       className="group inline-flex items-center gap-1.5 font-mono text-xs text-slate-800 dark:text-slate-200 hover:underline"
     >
       {ip}
-      <Globe size={12} className="text-indigo-500/70 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+      <Globe
+        size={12}
+        className="text-indigo-500/70 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+      />
     </a>
   );
 }
@@ -162,108 +175,54 @@ function SshTerminalButton({ host, onOpen }: { host: ScannedHost; onOpen: (host:
 }
 
 export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) {
-  const [startIp, setStartIp] = useState('');
-  const [endIp, setEndIp] = useState('');
   const [customPorts, setCustomPorts] = useState('');
   const [showPortField, setShowPortField] = useState(false);
-
-  const [scanning, setScanning] = useState(false);
-  const [scanId, setScanId] = useState<string | null>(null);
-  const [cancelling, setCancelling] = useState(false);
-  const [result, setResult] = useState<ScanResult | null>(null);
-  const [localError, setLocalError] = useState('');
-  const [pollNow, setPollNow] = useState<number | null>(null);
 
   const [search, setSearch] = useState('');
   const [onlineOnly, setOnlineOnly] = useState(true);
   const [portTags, setPortTags] = useState<string[]>([]);
-  const [localRange, setLocalRange] = useState<{ startIp: string; endIp: string } | null>(null);
   const { t } = useI18n();
   const { addToast, toastContainer } = useToast();
 
-  const rangePrefix = useMemo(() => {
-    const parts = startIp.trim().split('.');
-    if (parts.length < 3) return null;
-    const prefix = parts.slice(0, 3).join('.');
-    const octets = prefix.split('.').map(Number);
-    if (octets.some((o) => !Number.isInteger(o) || o > 255)) return null;
-    return prefix;
-  }, [startIp]);
-
-  const presets = useMemo(() => {
-    if (!rangePrefix) return [];
-    return [
-      { label: `${rangePrefix}.0 – ${rangePrefix}.255`, start: `${rangePrefix}.0`, end: `${rangePrefix}.255` },
-      { label: `${rangePrefix}.1 – ${rangePrefix}.126`, start: `${rangePrefix}.1`, end: `${rangePrefix}.126` },
-    ];
-  }, [rangePrefix]);
-
-  useEffect(() => {
-    apiCall<{ success: boolean; startIp: string | null; endIp: string | null }>('/scan/default-range')
-      .then((data) => {
-        if (data.startIp && data.endIp) {
-          const range = { startIp: data.startIp, endIp: data.endIp };
-          setLocalRange(range);
-          setStartIp((v) => (v.trim() ? v : range.startIp));
-          setEndIp((v) => (v.trim() ? v : range.endIp));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!scanning || !scanId) return;
-    const timer = setInterval(async () => {
-      try {
-        const data = await apiCall<ScanResult>(`/scan/${scanId}`);
-        setPollNow(Date.now());
-        setResult(data);
-        if (data.status === 'done' || data.status === 'failed' || data.status === 'cancelled') {
-          setScanning(false);
-          setCancelling(false);
-          if (data.status === 'done') {
-            const onlineCount = data.hosts.filter((h) => h.online).length;
-            addToast('success', t('scanner.complete', { n: String(onlineCount), plural: onlineCount === 1 ? '' : 's' }));
-          } else if (data.status === 'cancelled') {
-            addToast('success', t('scanner.cancelled'));
-          } else {
-            addToast('error', data.errorCode === 'icmp_unavailable' ? t('scanner.errIcmpUnavailable') : data.error || t('scanner.stopped'));
-          }
-        }
-      } catch (err) {
-        console.error(err);
+  const scan = useScan({
+    onSettled: (data) => {
+      if (data.status === 'done') {
+        const onlineCount = data.hosts.filter((h) => h.online).length;
+        addToast(
+          'success',
+          t('scanner.complete', { n: String(onlineCount), plural: onlineCount === 1 ? '' : 's' }),
+        );
+      } else if (data.status === 'cancelled') {
+        addToast('success', t('scanner.cancelled'));
+      } else {
+        addToast(
+          'error',
+          data.errorCode === 'icmp_unavailable'
+            ? t('scanner.errIcmpUnavailable')
+            : data.error || t('scanner.stopped'),
+        );
       }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [scanning, scanId, addToast, t]);
+    },
+  });
+  const {
+    startIp,
+    setStartIp,
+    endIp,
+    setEndIp,
+    setResult,
+    scanning,
+    cancelling,
+    result,
+    localError,
+    setLocalError,
+    pollNow,
+    localRange,
+    presets,
+    progressPct,
+    cancelScan,
+  } = scan;
 
-  const cancelScan = async () => {
-    if (!scanId || cancelling) return;
-    setCancelling(true);
-    try {
-      await apiCall('/scan/' + scanId + '/cancel', { method: 'POST' });
-    } catch (err) {
-      console.error(err);
-      setCancelling(false);
-    }
-  };
-
-  const startScan = async () => {
-    setLocalError('');
-    const s = ipToNum(startIp);
-    const e = ipToNum(endIp);
-    if (s === null || e === null) {
-      setLocalError(t('scanner.errInvalidIps'));
-      return;
-    }
-    if (s > e) {
-      setLocalError(t('scanner.errEndBeforeStart'));
-      return;
-    }
-    if (e - s + 1 > 256) {
-      setLocalError(t('scanner.errRangeTooLarge'));
-      return;
-    }
+  const handleStart = async () => {
     let ports: number[] | null = null;
     if (customPorts.trim()) {
       ports = parseCustomPorts(customPorts);
@@ -276,24 +235,8 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
         return;
       }
     }
-
-    setScanning(true);
-    setResult(null);
-    setCancelling(false);
     setSearch('');
-    try {
-      const body: Record<string, unknown> = { startIp: startIp.trim(), endIp: endIp.trim() };
-      if (ports) body.ports = ports;
-      const { scanId: id } = await apiCall<{ success: boolean; scanId: string }>('/scan', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      setScanId(id);
-    } catch (err) {
-      setScanning(false);
-      const message = err instanceof ApiError ? err.message : t('scanner.startFailed');
-      addToast('error', message);
-    }
+    void scan.startScan(ports ? { ports } : undefined);
   };
 
   const openDevice = (id: number) => {
@@ -302,7 +245,11 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
 
   const openHostTerminal = (host: ScannedHost) => {
     if (host.managed_device_id) {
-      onOpenTerminal({ target: 'device', deviceId: host.managed_device_id, deviceName: host.managed_device_name ?? undefined });
+      onOpenTerminal({
+        target: 'device',
+        deviceId: host.managed_device_id,
+        deviceName: host.managed_device_name ?? undefined,
+      });
     } else {
       onOpenTerminal({ target: 'ip', ip: host.ip, deviceName: host.ip });
     }
@@ -324,7 +271,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
     setFormProfileId('');
     if (!profilesFetchedRef.current) {
       profilesFetchedRef.current = true;
-      apiCall<Profile[]>('/profiles').then(setProfiles).catch(() => {});
+      apiCall<Profile[]>('/profiles')
+        .then(setProfiles)
+        .catch(() => {});
     }
     setAddTarget(host);
   };
@@ -357,10 +306,10 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
           ? {
               ...prev,
               hosts: prev.hosts.map((h) =>
-                h.ip === addTarget.ip ? { ...h, managed_device_id: data.id, managed_device_name: name } : h
+                h.ip === addTarget.ip ? { ...h, managed_device_id: data.id, managed_device_name: name } : h,
               ),
             }
-          : prev
+          : prev,
       );
       setAddTarget(null);
     } catch (err) {
@@ -388,19 +337,22 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
   }, [result, query, onlineOnly, portTags]);
 
   const onlineCount = result?.hosts.filter((h) => h.online).length ?? 0;
-  const progressPct = result && result.total > 0 ? (result.scannedCount / result.total) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{t('scanner.title')}</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+          {t('scanner.title')}
+        </h2>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('scanner.subtitle')}</p>
       </div>
 
       <div className="glass-card p-5 rounded-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.startIp')}</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+              {t('scanner.startIp')}
+            </label>
             <input
               type="text"
               value={startIp}
@@ -411,7 +363,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.endIp')}</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+              {t('scanner.endIp')}
+            </label>
             <input
               type="text"
               value={endIp}
@@ -422,7 +376,7 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
             />
           </div>
           <button
-            onClick={startScan}
+            onClick={() => void handleStart()}
             disabled={scanning}
             className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-medium px-4 py-2.5 rounded-lg transition-colors text-sm"
           >
@@ -505,7 +459,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
             </span>
             <span className="font-mono">
               {result.scannedCount}/{result.total}
-              {pollNow !== null && result.startedAt ? ` · ${Math.max(0, Math.round((pollNow - result.startedAt) / 1000))}s` : ''}
+              {pollNow !== null && result.startedAt
+                ? ` · ${Math.max(0, Math.round((pollNow - result.startedAt) / 1000))}s`
+                : ''}
             </span>
           </div>
           <div className="mt-2 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
@@ -545,15 +501,21 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
             {PORT_TAGS.map((tag) => (
               <button
                 key={tag.id}
-                onClick={() => setPortTags((prev) => (prev.includes(tag.id) ? prev.filter((x) => x !== tag.id) : [...prev, tag.id]))}
+                onClick={() =>
+                  setPortTags((prev) =>
+                    prev.includes(tag.id) ? prev.filter((x) => x !== tag.id) : [...prev, tag.id],
+                  )
+                }
                 title={
                   tag.id === 'other'
                     ? t('porttag.filterOther')
                     : t('porttag.filterExposing', { ports: tag.ports.join(', ') })
                 }
-                className={`${portTags.includes(tag.id)
-                  ? 'bg-indigo-600 border-indigo-600 text-white'
-                  : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10'} px-2 py-1 rounded-lg text-[11px] transition-colors`}
+                className={`${
+                  portTags.includes(tag.id)
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10'
+                } px-2 py-1 rounded-lg text-[11px] transition-colors`}
               >
                 {t(tag.labelKey)}
               </button>
@@ -602,52 +564,58 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
                 {visibleHosts.map((host, i) => {
                   const webUrl = webUrlFor(host);
                   return (
-                  <motion.tr
-                    key={host.ip}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: Math.min(i * 0.03, 0.25) }}
-                    className="hover:bg-slate-100/60 dark:hover:bg-white/[0.04] transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <StatusDot online={host.online} />
-                        {webUrl ? (
-                          <WebLinkIp ip={host.ip} url={webUrl} />
-                        ) : (
-                          <span
-                            className={`font-mono text-xs ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
-                          >
-                            {host.ip}
+                    <motion.tr
+                      key={host.ip}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: Math.min(i * 0.03, 0.25) }}
+                      className="hover:bg-slate-100/60 dark:hover:bg-white/[0.04] transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <StatusDot online={host.online} />
+                          {webUrl ? (
+                            <WebLinkIp ip={host.ip} url={webUrl} />
+                          ) : (
+                            <span
+                              className={`font-mono text-xs ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
+                            >
+                              {host.ip}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
+                        {host.hostname ?? (
+                          <span className="italic text-slate-500 dark:text-slate-600">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {host.mac ?? '-'}
+                      </td>
+                      <td className="hidden lg:table-cell px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
+                        {host.vendor ?? (
+                          <span className="italic text-slate-500 dark:text-slate-600">
+                            {t('scanner.unknown')}
                           </span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
-                      {host.hostname ?? <span className="italic text-slate-500 dark:text-slate-600">-</span>}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {host.mac ?? '-'}
-                    </td>
-                    <td className="hidden lg:table-cell px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
-                      {host.vendor ?? <span className="italic text-slate-500 dark:text-slate-600">{t('scanner.unknown')}</span>}
-                    </td>
-                    <td className="px-4 py-3">{host.online ? <PortBadges host={host} /> : '-'}</td>
-                    <td className="px-4 py-3 text-end">
-                      {host.online ? (
-                        <div className="inline-flex items-center justify-end gap-1.5">
-                          {host.managed_device_id ? (
-                            <ManagedBadge host={host} onOpen={openDevice} />
-                          ) : (
-                            <AddButton host={host} onAdd={openAdd} />
-                          )}
-                          {hasSshPort(host) && <SshTerminalButton host={host} onOpen={openHostTerminal} />}
-                        </div>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                  </motion.tr>
+                      </td>
+                      <td className="px-4 py-3">{host.online ? <PortBadges host={host} /> : '-'}</td>
+                      <td className="px-4 py-3 text-end">
+                        {host.online ? (
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            {host.managed_device_id ? (
+                              <ManagedBadge host={host} onOpen={openDevice} />
+                            ) : (
+                              <AddButton host={host} onAdd={openAdd} />
+                            )}
+                            {hasSshPort(host) && <SshTerminalButton host={host} onOpen={openHostTerminal} />}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                    </motion.tr>
                   );
                 })}
               </tbody>
@@ -658,58 +626,72 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
             {visibleHosts.map((host, i) => {
               const webUrl = webUrlFor(host);
               return (
-              <motion.div
-                key={host.ip}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.04, 0.25) }}
-                className="p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <StatusDot online={host.online} />
-                  {webUrl ? (
-                    <span className="font-mono text-sm">
-                      <WebLinkIp ip={host.ip} url={webUrl} />
-                    </span>
-                  ) : (
-                    <span
-                      className={`font-mono text-sm ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
-                    >
-                      {host.ip}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-3 pt-1 divide-y divide-slate-200/70 dark:divide-white/5">
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.colHostname')}</span>
-                    <span className="text-xs font-mono text-slate-600 dark:text-slate-300">{host.hostname ?? '-'}</span>
+                <motion.div
+                  key={host.ip}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i * 0.04, 0.25) }}
+                  className="p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <StatusDot online={host.online} />
+                    {webUrl ? (
+                      <span className="font-mono text-sm">
+                        <WebLinkIp ip={host.ip} url={webUrl} />
+                      </span>
+                    ) : (
+                      <span
+                        className={`font-mono text-sm ${host.online ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
+                      >
+                        {host.ip}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.colMac')}</span>
-                    <span className="text-xs font-mono text-slate-600 dark:text-slate-300">{host.mac ?? '-'}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.colVendor')}</span>
-                    <span className="text-xs font-mono text-slate-600 dark:text-slate-300">{host.vendor ?? t('scanner.unknown')}</span>
+                  <div className="mt-3 pt-1 divide-y divide-slate-200/70 dark:divide-white/5">
+                    <div className="flex items-center justify-between gap-3 py-2">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('scanner.colHostname')}
+                      </span>
+                      <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                        {host.hostname ?? '-'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 py-2">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('scanner.colMac')}
+                      </span>
+                      <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                        {host.mac ?? '-'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 py-2">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('scanner.colVendor')}
+                      </span>
+                      <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                        {host.vendor ?? t('scanner.unknown')}
+                      </span>
+                    </div>
+                    {host.online && (
+                      <div className="py-2">
+                        <span className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+                          {t('scanner.colPorts')}
+                        </span>
+                        <PortBadges host={host} />
+                      </div>
+                    )}
                   </div>
                   {host.online && (
-                    <div className="py-2">
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5">{t('scanner.colPorts')}</span>
-                      <PortBadges host={host} />
+                    <div className="mt-2 flex items-center justify-end gap-1.5">
+                      {host.managed_device_id ? (
+                        <ManagedBadge host={host} onOpen={openDevice} />
+                      ) : (
+                        <AddButton host={host} onAdd={openAdd} />
+                      )}
+                      {hasSshPort(host) && <SshTerminalButton host={host} onOpen={openHostTerminal} />}
                     </div>
                   )}
-                </div>
-                {host.online && (
-                  <div className="mt-2 flex items-center justify-end gap-1.5">
-                    {host.managed_device_id ? (
-                      <ManagedBadge host={host} onOpen={openDevice} />
-                    ) : (
-                      <AddButton host={host} onAdd={openAdd} />
-                    )}
-                    {hasSshPort(host) && <SshTerminalButton host={host} onOpen={openHostTerminal} />}
-                  </div>
-                )}
-              </motion.div>
+                </motion.div>
               );
             })}
           </div>
@@ -737,7 +719,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
 
           <form onSubmit={submitAdd} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.nameLabel')}</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                {t('scanner.nameLabel')}
+              </label>
               <input
                 required
                 value={formName}
@@ -747,7 +731,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.colIp')}</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                {t('scanner.colIp')}
+              </label>
               <input
                 value={addTarget.ip}
                 disabled
@@ -755,7 +741,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.colMac')}</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                {t('scanner.colMac')}
+              </label>
               <input
                 value={addTarget.mac ?? ''}
                 placeholder={t('scanner.unknown')}
@@ -764,7 +752,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.hostLabel')}</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                {t('scanner.hostLabel')}
+              </label>
               <input
                 value={formHost}
                 onChange={(e) => setFormHost(e.target.value)}
@@ -773,7 +763,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.typeLabel')}</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                {t('scanner.typeLabel')}
+              </label>
               <select
                 value={formType}
                 onChange={(e) => setFormType(e.target.value)}
@@ -787,7 +779,9 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('scanner.profileLabel')}</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                {t('scanner.profileLabel')}
+              </label>
               <select
                 value={formProfileId}
                 onChange={(e) => setFormProfileId(e.target.value)}

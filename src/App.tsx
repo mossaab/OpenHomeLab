@@ -353,6 +353,7 @@ export default function App() {
               settingsTick={settingsTick}
               onOpenSettings={() => setShowSettings(true)}
               onOpenTerminal={(deviceId, name, profileId) => openTerminal({ target: 'device', deviceId, deviceName: name, profileId })}
+              onOpenIpTerminal={(ip, name) => openTerminal({ target: 'ip', ip, deviceName: name ?? ip })}
               selectedDeviceId={route.deviceId}
               onSelectDevice={(id) => navigate('dashboard', id)}
               refreshMs={uiRefreshMs}

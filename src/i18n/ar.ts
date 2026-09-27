@@ -357,6 +357,8 @@ export const ar: Dict = {
   'devsetup.copyFailed': 'تعذر النسخ إلى الحافظة',
   'devsetup.createLinkFailed': 'فشل إنشاء رابط التثبيت',
   'devsetup.linkExpired': 'انتهت صلاحية رابط التثبيت — أنشئ واحدًا جديدًا بالأسفل.',
+  'devsetup.lanScanBtn': 'البحث عن جهاز في شبكتي…',
+  'devsetup.lanScanHint': 'اختر نطاقًا وشغّل المسح للعثور على الجهاز الهدف، ثم افتح طرفيته والصق أمر التثبيت بالأعلى.',
   'groups.title': 'إدارة المجموعات',
   'groups.noneYet': 'لا توجد مجموعات بعد. أنشئ واحدة بالأسفل واسحب الأجهزة إليها من لوحة التحكم.',
   'groups.dragReorder': 'اسحب لإعادة الترتيب',

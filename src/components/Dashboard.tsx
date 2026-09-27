@@ -254,10 +254,11 @@ function FleetEnergy({ range, onRangeChange, settingsTick, onOpenSettings, curre
     </div>
   );
 }
-export default function Dashboard({ settingsTick, onOpenSettings, onOpenTerminal, selectedDeviceId, onSelectDevice, refreshMs = 30000, agentIntervalS = 30, agentStaleMs = 90000, appSettings, onAppSettingsChanged }: {
+export default function Dashboard({ settingsTick, onOpenSettings, onOpenTerminal, onOpenIpTerminal, selectedDeviceId, onSelectDevice, refreshMs = 30000, agentIntervalS = 30, agentStaleMs = 90000, appSettings, onAppSettingsChanged }: {
   settingsTick: number;
   onOpenSettings: () => void;
   onOpenTerminal: (deviceId: number, name: string, profileId: number | null) => void;
+  onOpenIpTerminal: (ip: string, name?: string) => void;
   selectedDeviceId: number | null;
   onSelectDevice: (id: number | null) => void;
   refreshMs?: number;
@@ -1091,7 +1092,7 @@ export default function Dashboard({ settingsTick, onOpenSettings, onOpenTerminal
           onBackdropClick={closeDevicesModal}
           className="w-full sm:max-w-4xl max-h-[92dvh] sm:max-h-[85vh] overflow-y-auto custom-scrollbar rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl border-b sm:border border-slate-200 dark:border-white/10"
         >
-          <DevicesSetup onClose={closeDevicesModal} onViewDevice={handleViewDeviceFromModal} />
+          <DevicesSetup onClose={closeDevicesModal} onViewDevice={handleViewDeviceFromModal} onOpenIpTerminal={onOpenIpTerminal} />
         </Modal>
       )}
 
