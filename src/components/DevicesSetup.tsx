@@ -770,18 +770,20 @@ export default function DevicesSetup({ onClose, onViewDevice }: DevicesSetupProp
               </div>
             )}
 
-            <DeviceForm
-              values={formData}
-              onChange={setFormData}
-              profiles={profiles}
-              groups={groups}
-              interfaces={modalInterfaces}
-              selectedIfaceName={wolIfaceName}
-              onIfaceSelect={handleIfaceSelect}
-              submitLabel={t('devsetup.addDeviceBtn')}
-              onSubmit={(e) => void handleSubmit(e)}
-              onCancel={closeModal}
-            />
+            {(addMode === 'manual' || !!agentSnapshot) && (
+              <DeviceForm
+                values={formData}
+                onChange={setFormData}
+                profiles={profiles}
+                groups={groups}
+                interfaces={modalInterfaces}
+                selectedIfaceName={wolIfaceName}
+                onIfaceSelect={handleIfaceSelect}
+                submitLabel={t('devsetup.addDeviceBtn')}
+                onSubmit={(e) => void handleSubmit(e)}
+                onCancel={closeModal}
+              />
+            )}
         </Modal>
       )}
 
