@@ -106,3 +106,20 @@ jobs:
             ${{ github.workspace }}/openhomelab-v*.zip
           body_path: ${{ github.workspace }}/RELEASE_NOTES.md
           fail_on_unmatched_files: true
+
+      - name: Verify release notes body
+        run: |
+          REL_ID="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME} --jq .id)"
+          BODY="$(gh api repos/${GITHUB_REPOSITORY}/releases/"$REL_ID" --jq .body)"
+          if [ -z "$BODY" ]; then
+            echo "Release body empty, patching notes from RELEASE_NOTES.md"
+            gh api -X PATCH repos/${GITHUB_REPOSITORY}/releases/"$REL_ID" \
+              -f tag_name=${GITHUB_REF_NAME} \
+              --field "body=@RELEASE_NOTES.md"
+          fi
+          BODY="$(gh api repos/${GITHUB_REPOSITORY}/releases/"$REL_ID" --jq .body)"
+          if [ -z "$BODY" ]; then
+            echo "::error::Release body is still empty after patching"
+            exit 1
+          fi
+          echo "Release notes set (${#BODY} chars)"
