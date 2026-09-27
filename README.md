@@ -11,6 +11,7 @@ Self-hosted network device controller. Monitor your equipment with live ping sta
 ## Contents
 
 - [Features](#features)
+- [Screenshots](#screenshots)
 - [Architecture](#architecture)
 - [Getting started (local development)](#getting-started-local-development)
 - [Docker](#docker)
@@ -41,6 +42,24 @@ Self-hosted network device controller. Monitor your equipment with live ping sta
 - **External API** — a dedicated public surface for outside systems with scoped `ncapi-*` tokens (per-device scoping, per-operation permissions, usage logs)
 - **Data import/export** — JSON export of devices, profiles and groups; idempotent upsert import that re-encrypts plaintext credentials
 - **Security** — master-password login (bcrypt), 24h JWT sessions, login rate limiting, change-password flow
+
+## Screenshots
+
+**Dashboard** — fleet status at a glance: online/offline counts, total fleet power and energy (kWh with estimated cost), device cards grouped by group with live CPU/RAM/GPU utilization and power draw per device.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+**Device detail — live metrics** — real-time gauges for CPU, memory, GPU and power consumption, plus swap, load, uptime, network throughput, disk usage and full system information (OS, kernel, CPU model, RAM), with the agent status badge up top.
+
+![Device detail — live metrics](docs/screenshots/device-detail-live.png)
+
+**Device detail — history** — energy consumption broken down per GPU and base system for the selected range, alongside utilization, power and network charts across selectable ranges from 1h to 1y.
+
+![Device detail — history](docs/screenshots/device-detail-history.png)
+
+**Web SSH terminal** — a full xterm.js session to a host profile straight from the browser, streamed over WebSocket with live resize support.
+
+![Web SSH terminal](docs/screenshots/terminal.png)
 
 ## Architecture
 
