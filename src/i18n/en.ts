@@ -356,6 +356,9 @@ export const en = {
   'devsetup.lanScanBtn': 'Find a device on my network…',
   'devsetup.lanScanHint':
     'Pick a range and scan to find the target host, then open its terminal and paste the install command above.',
+  'devsetup.showOnlineOnly': 'Online only',
+  'devsetup.hiddenOffline': '{n} offline hidden',
+  'devsetup.alreadyAdded': 'Already added',
   'groups.title': 'Manage groups',
   'groups.noneYet': 'No groups yet. Create one below and drag devices into it from the dashboard.',
   'groups.dragReorder': 'Drag to reorder',

@@ -370,6 +370,9 @@ export const fr: Dict = {
   'devsetup.lanScanBtn': 'Trouver un équipement sur mon réseau…',
   'devsetup.lanScanHint':
     'Choisissez une plage et lancez le scan pour trouver l’équipement cible, ouvrez son terminal puis collez la commande d’installation ci-dessus.',
+  'devsetup.showOnlineOnly': 'En ligne uniquement',
+  'devsetup.hiddenOffline': '{n} hors ligne masqués',
+  'devsetup.alreadyAdded': 'Déjà ajouté',
   'groups.title': 'Gérer les groupes',
   'groups.noneYet':
     'Aucun groupe pour le moment. Créez-en un ci-dessous et glissez des équipements depuis le tableau de bord.',

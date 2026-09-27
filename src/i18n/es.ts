@@ -364,6 +364,9 @@ export const es: Dict = {
   'devsetup.lanScanBtn': 'Buscar un equipo en mi red…',
   'devsetup.lanScanHint':
     'Elige un rango y escanea para encontrar el equipo destino, abre su terminal y pega el comando de instalación de arriba.',
+  'devsetup.showOnlineOnly': 'Solo en línea',
+  'devsetup.hiddenOffline': '{n} desconectados ocultos',
+  'devsetup.alreadyAdded': 'Ya añadido',
   'groups.title': 'Gestionar grupos',
   'groups.noneYet': 'Todavía no hay grupos. Crea uno abajo y arrastra equipos desde el panel.',
   'groups.dragReorder': 'Arrastra para reordenar',

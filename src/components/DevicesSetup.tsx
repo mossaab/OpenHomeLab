@@ -28,6 +28,7 @@ import { useToast } from './Toast';
 import { deviceTypeSpec } from '../deviceTypes';
 import { useI18n } from '../i18n';
 import { useScan } from '../hooks/useScan';
+import ManagedHostBadge from './ManagedHostBadge';
 
 function StatusDot({ online }: { online: boolean }) {
   const { t } = useI18n();
@@ -58,9 +59,11 @@ function ProfileBadge({ name }: { name: string }) {
 
 function LanScanPanel({
   onOpenIpTerminal,
+  onViewDevice,
   onScanningChange,
 }: {
   onOpenIpTerminal: (ip: string, name?: string) => void;
+  onViewDevice: (id: number) => void;
   onScanningChange: (scanning: boolean) => void;
 }) {
   const scan = useScan();
@@ -81,10 +84,29 @@ function LanScanPanel({
     startScan,
   } = scan;
   const { t } = useI18n();
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    if (!scanning) setShowAll(false);
+  }, [scanning]);
 
   useEffect(() => {
     onScanningChange(scanning);
   }, [scanning, onScanningChange]);
+
+  const hosts = useMemo(() => {
+    return [...(result?.hosts ?? [])].sort((a, b) => {
+      if (a.online !== b.online) return a.online ? -1 : 1;
+      const am = a.managed_device_id ? 1 : 0;
+      const bm = b.managed_device_id ? 1 : 0;
+      if (am !== bm) return bm - am;
+      return a.ip.localeCompare(b.ip, undefined, { numeric: true });
+    });
+  }, [result]);
+
+  const onlineCount = hosts.filter((h) => h.online).length;
+  const offlineCount = hosts.filter((h) => !h.online && !h.managed_device_id).length;
+  const visibleHosts = showAll ? hosts : hosts.filter((h) => h.online || h.managed_device_id);
 
   return (
     <div className="space-y-3">
@@ -203,34 +225,71 @@ function LanScanPanel({
         ) : result.hosts.length === 0 ? (
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.emptyHint')}</p>
         ) : (
-          <ul className="max-h-44 overflow-y-auto custom-scrollbar rounded-lg border border-slate-200 dark:border-white/10 divide-y divide-slate-200/70 dark:divide-white/5">
-            {result.hosts.map((h) => (
-              <li key={h.ip} className="flex items-center gap-2.5 px-3 py-2">
-                <span
-                  title={h.online ? t('common.online') : t('common.offline')}
-                  className={`h-2 w-2 rounded-full shrink-0 ${h.online ? 'status-online' : 'status-offline'}`}
-                />
-                <span className="font-mono text-xs text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                  {h.ip}
-                </span>
-                <span className="flex-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                  {h.hostname ?? '-'}
-                </span>
-                <span className="hidden sm:inline font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                  {h.mac ?? '-'}
-                </span>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-mono text-emerald-700 dark:text-emerald-300">
+                {t('scanner.onlineChip', { n: onlineCount })}
+              </span>
+              <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-2 py-1 rounded-lg text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                {t('scanner.scannedChip', { found: result.hosts.length, total: result.total })}
+              </span>
+              {offlineCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => onOpenIpTerminal(h.ip, h.hostname ?? h.ip)}
-                  title={t('scanner.terminalBtn')}
-                  aria-label={t('scanner.terminalBtn')}
-                  className="shrink-0 p-1.5 rounded transition-colors text-slate-500 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10"
+                  onClick={() => setShowAll((v) => !v)}
+                  className={`ms-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors ${
+                    showAll
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300'
+                      : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10'
+                  }`}
                 >
-                  <TerminalIcon size={14} />
+                  {showAll
+                    ? t('devsetup.showOnlineOnly')
+                    : t('devsetup.hiddenOffline', { n: offlineCount })}
                 </button>
-              </li>
-            ))}
-          </ul>
+              )}
+            </div>
+            {visibleHosts.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('scanner.noMatch')}</p>
+            ) : (
+              <ul className="max-h-44 overflow-y-auto custom-scrollbar rounded-lg border border-slate-200 dark:border-white/10 divide-y divide-slate-200/70 dark:divide-white/5">
+                {visibleHosts.map((h) => (
+                  <li
+                    key={h.ip}
+                    className={`flex items-center gap-2.5 px-3 py-2 ${
+                      h.managed_device_id ? 'bg-indigo-50/40 dark:bg-indigo-500/[0.07]' : ''
+                    }`}
+                  >
+                    <span
+                      title={h.online ? t('common.online') : t('common.offline')}
+                      className={`h-2 w-2 rounded-full shrink-0 ${h.online ? 'status-online' : 'status-offline'}`}
+                    />
+                    <span className="font-mono text-xs text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                      {h.ip}
+                    </span>
+                    <span className="flex-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                      {h.hostname ?? '-'}
+                    </span>
+                    {h.mac ? (
+                      <span className="hidden sm:inline font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {h.mac}
+                      </span>
+                    ) : null}
+                    <ManagedHostBadge host={h} onOpen={onViewDevice} compact />
+                    <button
+                      type="button"
+                      onClick={() => onOpenIpTerminal(h.ip, h.hostname ?? h.ip)}
+                      title={t('scanner.terminalBtn')}
+                      aria-label={t('scanner.terminalBtn')}
+                      className="shrink-0 p-1.5 rounded transition-colors text-slate-500 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10"
+                    >
+                      <TerminalIcon size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ))}
     </div>
   );
@@ -985,7 +1044,11 @@ export default function DevicesSetup({ onClose, onViewDevice, onOpenIpTerminal }
                 </button>
                 {lanPanelOpen && (
                   <div className="px-4 pb-4 pt-3 border-t border-slate-200 dark:border-white/10">
-                    <LanScanPanel onOpenIpTerminal={onOpenIpTerminal} onScanningChange={setLanScanning} />
+                    <LanScanPanel
+                      onOpenIpTerminal={onOpenIpTerminal}
+                      onViewDevice={onViewDevice}
+                      onScanningChange={setLanScanning}
+                    />
                   </div>
                 )}
               </div>

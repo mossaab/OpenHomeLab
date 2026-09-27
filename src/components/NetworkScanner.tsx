@@ -7,7 +7,6 @@ import {
   Play,
   Search,
   Loader2,
-  ArrowUpRight,
   Plus,
   X,
   Globe,
@@ -20,6 +19,7 @@ import { DEVICE_TYPES } from '../deviceTypes';
 import { useI18n } from '../i18n';
 import type { Dict } from '../i18n/index';
 import { useScan } from '../hooks/useScan';
+import ManagedHostBadge from './ManagedHostBadge';
 
 function parseCustomPorts(raw: string): number[] | null {
   const trimmed = raw.trim();
@@ -99,22 +99,6 @@ function PortBadges({ host }: { host: ScannedHost }) {
         </span>
       ))}
     </div>
-  );
-}
-
-function ManagedBadge({ host, onOpen }: { host: ScannedHost; onOpen: (id: number) => void }) {
-  const { t } = useI18n();
-  if (!host.managed_device_id)
-    return <span className="italic text-xs text-slate-500 dark:text-slate-600">{t('scanner.unknown')}</span>;
-  return (
-    <button
-      onClick={() => onOpen(host.managed_device_id as number)}
-      title={t('scanner.openInDash', { name: host.managed_device_name ?? '' })}
-      className="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-1 rounded text-[10px] uppercase tracking-wider text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200/70 dark:hover:bg-indigo-500/25 transition-colors"
-    >
-      {host.managed_device_name}
-      <ArrowUpRight size={11} />
-    </button>
   );
 }
 
@@ -605,7 +589,7 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
                         {host.online ? (
                           <div className="inline-flex items-center justify-end gap-1.5">
                             {host.managed_device_id ? (
-                              <ManagedBadge host={host} onOpen={openDevice} />
+                              <ManagedHostBadge host={host} onOpen={openDevice} />
                             ) : (
                               <AddButton host={host} onAdd={openAdd} />
                             )}
@@ -684,7 +668,7 @@ export default function NetworkScanner({ onOpenTerminal }: NetworkScannerProps) 
                   {host.online && (
                     <div className="mt-2 flex items-center justify-end gap-1.5">
                       {host.managed_device_id ? (
-                        <ManagedBadge host={host} onOpen={openDevice} />
+                        <ManagedHostBadge host={host} onOpen={openDevice} />
                       ) : (
                         <AddButton host={host} onAdd={openAdd} />
                       )}
