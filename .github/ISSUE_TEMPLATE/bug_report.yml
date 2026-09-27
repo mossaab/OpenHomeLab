@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible problem with OpenHomeLab
+title: "Bug: "
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, or the exact command/sequence that triggers the bug.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `git describe --tags` (for git installs) or the footer version on the dashboard.
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Server OS / deployment
+      description: e.g. Ubuntu 24.04, Docker via compose, Raspberry Pi OS…
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant server output (`docker compose logs app`) or console errors. Paste as plain text; do not include credentials.
+    validations:
+      required: false

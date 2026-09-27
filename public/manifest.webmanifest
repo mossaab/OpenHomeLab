@@ -1,0 +1,26 @@
+{
+  "name": "OpenHomeLab",
+  "short_name": "OpenHomeLab",
+  "description": "Self-hosted network device controller: ping monitoring, Wake-on-LAN and remote reboot/shutdown over SSH",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#f2b53c",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

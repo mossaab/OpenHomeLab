@@ -1,0 +1,32 @@
+name: openhomelab
+
+services:
+  app:
+    image: ${OPENHOMELAB_IMAGE:-ghcr.io/mossaab/openhomelab}:${OPENHOMELAB_VERSION:-latest}
+    container_name: openhomelab
+    # Host networking is required for Wake-on-LAN to send broadcast packets
+    # on the host's LAN. The port mapping is ignored in host mode,
+    # so PORT must match the desired external port (1214).
+    network_mode: "host"
+    # NET_RAW: ICMP ping monitoring. NET_BROADCAST: WOL UDP broadcast sends
+    # from the non-root user inside the container.
+    cap_add:
+      - NET_RAW
+      - NET_BROADCAST
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-1214}
+      - DB_PATH=/app/data/database.sqlite
+      # Required in production. The server refuses to start without it.
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required - set it in .env or the environment}
+      # Optional: AES-256-GCM key used to encrypt stored SSH credentials at rest.
+      # If omitted, a random key is generated once and stored in the database.
+      - APP_ENCRYPTION_KEY=${APP_ENCRYPTION_KEY:-}
+    volumes:
+      # Same named volume as docker-compose.dev.yml (openhomelab_sqlite_data),
+      # so dev and prod share the database without migration.
+      - sqlite_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:

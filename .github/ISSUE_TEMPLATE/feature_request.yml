@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an idea or improvement for OpenHomeLab
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What is the gap? What do you want to accomplish that OpenHomeLab can't do today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: A clear and concise description of what you want to happen, including how it should look/feel if it touches the UI.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other ways you've seen this solved, or workarounds you currently use.
+    validations:
+      required: false

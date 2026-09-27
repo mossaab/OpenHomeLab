@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "./theme-terminal.css";
+@import "./theme-monokai.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100dvh;
+  width: 100vw;
+  background-color: #f1f5f9;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+.dark body,
+.dark html {
+  background-color: #0f172a;
+}
+
+.mesh-gradient {
+  background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+              radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.10) 0px, transparent 50%),
+              radial-gradient(at 100% 100%, rgba(241, 245, 249, 0.6) 0px, transparent 50%),
+              radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+}
+
+.dark .mesh-gradient {
+  background: radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.5) 0px, transparent 50%),
+              radial-gradient(at 100% 0%, rgba(88, 28, 135, 0.4) 0px, transparent 50%),
+              radial-gradient(at 100% 100%, rgba(15, 23, 42, 1) 0px, transparent 50%),
+              radial-gradient(at 0% 100%, rgba(20, 184, 166, 0.2) 0px, transparent 50%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dark .glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  transition: all 0.3s ease;
+}
+
+.dark .glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.3s ease;
+}
+
+.chart-grid {
+  stroke: rgba(100, 116, 139, 0.15);
+}
+
+.dark .chart-grid {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.status-online {
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.status-offline {
+  background: #f43f5e;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+}
+
+.status-stale {
+  background: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.card-status-online {
+  border-color: rgba(16, 185, 129, 0.7);
+  box-shadow: 0 0 18px -4px rgba(16, 185, 129, 0.5);
+}
+
+.dark .card-status-online {
+  border-color: rgba(52, 211, 153, 0.85);
+  box-shadow: 0 0 22px -4px rgba(16, 185, 129, 0.55);
+}
+
+.card-status-stale {
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 0 18px -4px rgba(245, 158, 11, 0.5);
+}
+
+.dark .card-status-stale {
+  border-color: rgba(245, 158, 11, 0.9);
+  box-shadow: 0 0 22px -4px rgba(245, 158, 11, 0.55);
+}
+
+.card-status-offline {
+  border-color: rgba(244, 63, 94, 0.45);
+  box-shadow: 0 0 12px -6px rgba(244, 63, 94, 0.25);
+}
+
+.dark .card-status-offline {
+  border-color: rgba(244, 63, 94, 0.55);
+  box-shadow: 0 0 16px -6px rgba(244, 63, 94, 0.3);
+}
+
+.metric-track {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+
+.dark .metric-track {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+.metric-fill {
+  min-width: 3px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.15);
+  border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-shimmer {
+    animation: shimmer 1.5s infinite linear;
+  }
+}

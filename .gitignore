@@ -1,0 +1,11 @@
+node_modules/
+build/
+dist/
+coverage/
+.vitest/
+.DS_Store
+*.log
+.playwright-cli/
+.env*
+!.env.example
+*.sqlite
