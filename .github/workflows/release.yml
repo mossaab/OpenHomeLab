@@ -72,8 +72,7 @@ jobs:
             ${{ env.IMAGE_REF }}:latest
 
       - name: Generate release notes
-        run: gh api -X POST repos/${GITHUB_REPOSITORY}/releases/generate-notes \
-          -f tag_name=$GITHUB_REF_NAME --jq .body > RELEASE_NOTES.md
+        run: gh api -X POST repos/${GITHUB_REPOSITORY}/releases/generate-notes -f tag_name=${GITHUB_REF_NAME} --jq .body > RELEASE_NOTES.md
 
       - name: Append image digest to release notes
         run: |
