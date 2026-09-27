@@ -2,7 +2,10 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install --omit=dev
+RUN apk add --no-cache python3 make g++ \
+ && npm install --omit=dev \
+ && apk del python3 make g++ \
+ && npm cache clean --force
 
 # ---- Stage 2: Build ----
 FROM node:22-alpine AS build
@@ -10,7 +13,10 @@ WORKDIR /app
 ARG APP_VERSION=""
 ENV APP_VERSION=${APP_VERSION}
 COPY package.json package-lock.json ./
-RUN npm install
+RUN apk add --no-cache python3 make g++ \
+ && npm install \
+ && apk del python3 make g++ \
+ && npm cache clean --force
 COPY . .
 RUN npm run build
 
