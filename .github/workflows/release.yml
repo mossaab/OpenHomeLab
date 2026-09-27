@@ -92,9 +92,9 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag-name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           name: OpenHomeLab ${{ github.ref_name }}
           files: |
             openhomelab-v*.tar.gz
             openhomelab-v*.zip
-          body-file: RELEASE_NOTES.md
+          body_path: RELEASE_NOTES.md
