@@ -89,12 +89,20 @@ jobs:
             echo "- \`${IMAGE_REF}:latest\` (rolling tag)"
           } > RELEASE_NOTES.tmp && mv RELEASE_NOTES.tmp RELEASE_NOTES.md
 
+      - name: Verify release artifacts
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          test -s "openhomelab-v${TAG}.tar.gz"
+          test -s "openhomelab-v${TAG}.zip"
+          test -s RELEASE_NOTES.md
+
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.6.2
         with:
           tag_name: ${{ github.ref_name }}
           name: OpenHomeLab ${{ github.ref_name }}
           files: |
-            openhomelab-v*.tar.gz
-            openhomelab-v*.zip
-          body_path: RELEASE_NOTES.md
+            ${{ github.workspace }}/openhomelab-v*.tar.gz
+            ${{ github.workspace }}/openhomelab-v*.zip
+          body_path: ${{ github.workspace }}/RELEASE_NOTES.md
+          fail_on_unmatched_files: true
