@@ -181,7 +181,7 @@ export default function NetworkScanner() {
           } else if (data.status === 'cancelled') {
             addToast('success', t('scanner.cancelled'));
           } else {
-            addToast('error', data.error || t('scanner.stopped'));
+            addToast('error', data.errorCode === 'icmp_unavailable' ? t('scanner.errIcmpUnavailable') : data.error || t('scanner.stopped'));
           }
         }
       } catch (err) {

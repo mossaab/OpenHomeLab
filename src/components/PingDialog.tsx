@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Modal from './Modal';
-import { apiCall } from '../api';
+import { apiCall, ApiError } from '../api';
 import { useI18n } from '../i18n';
 import { X, Play, Square, Clock, Wifi, WifiOff } from 'lucide-react';
 
@@ -44,11 +44,20 @@ export default function PingDialog({
       });
       const now = new Date().toLocaleTimeString();
       setEntries(prev => [...prev, { seq, alive: result.alive, time: result.time, timestamp: now }]);
-    } catch (e: any) {
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 503) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setRunning(false);
+        setError(t('scanner.errIcmpUnavailable'));
+        return;
+      }
       const now = new Date().toLocaleTimeString();
       setEntries(prev => [...prev, { seq, alive: false, time: null, timestamp: now }]);
     }
-  }, [deviceId]);
+  }, [deviceId, t]);
 
   const startPing = () => {
     setError('');

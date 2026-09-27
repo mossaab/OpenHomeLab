@@ -643,6 +643,8 @@ export const es: Dict = {
   'scanner.complete': 'Escaneo completado — {n} equipo{plural} encontrado',
   'scanner.cancelled': 'El escaneo se canceló',
   'scanner.stopped': 'El escaneo se detuvo de forma inesperada',
+  'scanner.errIcmpUnavailable':
+    'Los ping ICMP no están disponibles en este entorno. Ejecuta el contenedor con la red del host y la capacidad NET_RAW.',
   'scanner.unknown': 'Desconocido',
   'scanner.openInDash': 'Abrir {name} en el panel',
   'scanner.addTitle': 'Añadir este host a tus dispositivos',

@@ -1167,11 +1167,57 @@ export async function wakeDevice(
   return { status: 200, body: { success: true, broadcastAddresses: sent } };
 }
 
+const ICMP_UNAVAILABLE_PATTERN = /permission denied|operation not permitted|eperm|eacces/i;
+const ICMP_UNAVAILABLE_MESSAGE =
+  'ICMP pings are not available in this environment. Run the container with host networking and the NET_RAW capability.';
+
+class IcmpUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IcmpUnavailableError';
+  }
+}
+
+let icmpUnavailableWarned = false;
+
+function detectIcmpUnavailable(text: string): boolean {
+  return ICMP_UNAVAILABLE_PATTERN.test(text);
+}
+
+function warnIcmpUnavailableOnce(context: string): void {
+  if (icmpUnavailableWarned) return;
+  icmpUnavailableWarned = true;
+  console.warn(`ICMP pings unavailable (${context}): ${ICMP_UNAVAILABLE_MESSAGE}`);
+}
+
+async function icmpProbe(
+  ip: string,
+  timeoutS: number,
+  extra?: string[]
+): Promise<{ alive: boolean; time: number | null; output: string }> {
+  try {
+    const result = await ping.promise.probe(ip, {
+      timeout: timeoutS,
+      ...(extra ? { extra } : {}),
+    });
+    if (detectIcmpUnavailable(result.output ?? '')) {
+      throw new IcmpUnavailableError((result.output ?? '').trim());
+    }
+    return { alive: result.alive, time: result.time ?? null, output: result.output ?? '' };
+  } catch (err) {
+    if (err instanceof IcmpUnavailableError) throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    if (detectIcmpUnavailable(message)) throw new IcmpUnavailableError(message);
+    return { alive: false, time: null, output: '' };
+  }
+}
+
 async function probeDeviceStatus(ip: string): Promise<{ online: boolean; latency_ms: number | null }> {
   try {
-    const result = await ping.promise.probe(ip, { timeout: 1 });
-    return { online: result.alive, latency_ms: result.time ?? null };
-  } catch {
+    const result = await icmpProbe(ip, 1);
+    return { online: result.alive, latency_ms: result.time };
+  } catch (err) {
+    if (err instanceof IcmpUnavailableError) warnIcmpUnavailableOnce('probeDeviceStatus');
     return { online: false, latency_ms: null };
   }
 }
@@ -1691,6 +1737,7 @@ interface ScanJob {
   createdAt: number;
   finishedAt: number | null;
   error: string | null;
+  errorCode: string | null;
   cancelled: boolean;
   ips: string[];
   ports: number[];
@@ -1909,13 +1956,13 @@ async function runScanJob(db: Database, job: ScanJob): Promise<void> {
         managed_device_name: null,
       };
       try {
-        const result = await ping.promise.probe(ip, { timeout: SCAN_PING_TIMEOUT_S });
+        const result = await icmpProbe(ip, SCAN_PING_TIMEOUT_S);
         if (result.alive) {
           host.online = true;
           await enrichScannedHost(db, host, job.ports, arpTable);
         }
-      } catch {
-        // probe failed — treat as offline
+      } catch (err) {
+        if (err instanceof IcmpUnavailableError) throw err;
       }
       job.hosts.push(host);
       job.scannedCount += 1;
@@ -2430,6 +2477,7 @@ export function createApp(ctx: AppContext): express.Express {
       createdAt: Date.now(),
       finishedAt: null,
       error: null,
+      errorCode: null,
       cancelled: false,
       ips: range,
       ports,
@@ -2445,8 +2493,13 @@ export function createApp(ctx: AppContext): express.Express {
         console.error('Network scan failed:', err);
         if (job.status === 'running') {
           job.status = 'failed';
-          job.error = 'The scan stopped unexpectedly';
           job.finishedAt = Date.now();
+          if (err instanceof IcmpUnavailableError) {
+            job.errorCode = 'icmp_unavailable';
+            job.error = ICMP_UNAVAILABLE_MESSAGE;
+          } else {
+            job.error = 'The scan stopped unexpectedly';
+          }
         }
       });
     res.json({ success: true, scanId: id });
@@ -2471,6 +2524,7 @@ export function createApp(ctx: AppContext): express.Express {
       finishedAt: job.finishedAt,
       durationMs: job.finishedAt ? job.finishedAt - job.createdAt : null,
       error: job.error,
+      errorCode: job.errorCode,
     });
   }));
 
@@ -3104,9 +3158,10 @@ export function createApp(ctx: AppContext): express.Express {
     const statuses = await Promise.all(
       devices.map(async (d) => {
         try {
-          const result = await ping.promise.probe(d.ip, { timeout: 1 });
+          const result = await icmpProbe(d.ip, 1);
           return { id: d.id, online: result.alive };
-        } catch {
+        } catch (err) {
+          if (err instanceof IcmpUnavailableError) warnIcmpUnavailableOnce('devices/status');
           return { id: d.id, online: false };
         }
       })
@@ -3127,8 +3182,16 @@ export function createApp(ctx: AppContext): express.Express {
       return res.status(403).json({ error: 'Ping is disabled for this device' });
     }
 
-    const result = await ping.promise.probe(device.ip, { timeout: 2, extra: ['-c', '1'] });
-    res.json({ alive: result.alive, time: result.time ?? null, output: result.output ?? '' });
+    try {
+      const result = await icmpProbe(device.ip, 2, ['-c', '1']);
+      res.json({ alive: result.alive, time: result.time, output: result.output });
+    } catch (err) {
+      if (err instanceof IcmpUnavailableError) {
+        warnIcmpUnavailableOnce('devices/:id/ping');
+        return res.status(503).json({ error: ICMP_UNAVAILABLE_MESSAGE, errorCode: 'icmp_unavailable' });
+      }
+      throw err;
+    }
   }));
 
   app.post('/api/devices/:id/wake', asyncHandler(async (req, res) => {

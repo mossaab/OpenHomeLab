@@ -626,6 +626,8 @@ export const en = {
   'scanner.complete': 'Scan complete — {n} host{plural} found',
   'scanner.cancelled': 'The scan was cancelled',
   'scanner.stopped': 'The scan stopped unexpectedly',
+  'scanner.errIcmpUnavailable':
+    'ICMP pings are unavailable in this environment. Run the container with host networking and the NET_RAW capability.',
   'scanner.unknown': 'Unknown',
   'scanner.openInDash': 'Open {name} in the dashboard',
   'scanner.addTitle': 'Add this host to your devices',

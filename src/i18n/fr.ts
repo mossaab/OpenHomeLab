@@ -653,6 +653,8 @@ export const fr: Dict = {
   'scanner.complete': 'Analyse terminée — {n} hôte{plural} détecté',
   'scanner.cancelled': "L'analyse a été annulée",
   'scanner.stopped': "L'analyse s'est arrêtée inopinément",
+  'scanner.errIcmpUnavailable':
+    "La diffusion ICMP n'est pas disponible dans cet environnement. Exécutez le conteneur avec le réseau hôte et la capacité NET_RAW.",
   'scanner.unknown': 'Inconnu',
   'scanner.openInDash': 'Ouvrir {name} dans le tableau de bord',
   'scanner.addTitle': 'Ajouter cet hôte à vos appareils',

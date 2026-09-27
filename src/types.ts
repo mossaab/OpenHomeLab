@@ -235,4 +235,5 @@ export interface ScanResult {
   finishedAt: number | null;
   durationMs: number | null;
   error: string | null;
+  errorCode: string | null;
 }

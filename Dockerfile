@@ -24,6 +24,8 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 
+RUN apk add --no-cache iputils
+
 # Copy production dependencies
 COPY --from=deps /app/node_modules ./node_modules
 

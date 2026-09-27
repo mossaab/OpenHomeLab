@@ -631,6 +631,8 @@ export const ar: Dict = {
   'scanner.complete': 'اكتمل الفحص — تم العثور على {n} من الأجهزة',
   'scanner.cancelled': 'تم إلغاء الفحص',
   'scanner.stopped': 'توقف الفحص بشكل غير متوقع',
+  'scanner.errIcmpUnavailable':
+    'إشارات ICMP غير متاحة في هذه البيئة. شغّل الحاوية مع شبكة المستضيف والإمكانية NET_RAW.',
   'scanner.unknown': 'غير معروف',
   'scanner.openInDash': 'فتح {name} في لوحة التحكم',
   'scanner.addTitle': 'إضافة هذا المضيف إلى أجهزتك',
